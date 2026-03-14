@@ -1,23 +1,29 @@
-def get_main_object(objects):
-    if len(objects) == 0:
-        return None
-    return objects[0]  # largest detected object
+import numpy as np
 
+def calculate_angle(p1, p2):
+    return np.degrees(np.arctan2(p2[1] - p1[1], p2[0] - p1[0]))
 
-def filter_self_person(obj, frame_w, frame_h):
-    name = obj["name"]
+def euclidean(p1, p2):
+    return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
-    # If not a person → keep it
-    if name != "person":
-        return True
+def compute_features(keypoints, prev_hip_center, prev_velocity):
 
-    # Person detection → check if it's YOU in front camera
-    x1, y1, x2, y2 = obj["box"]
-    box_w = x2 - x1
-    box_h = y2 - y1
+    shoulder_tilt = calculate_angle(keypoints[11], keypoints[12])
+    hip_tilt = calculate_angle(keypoints[23], keypoints[24])
+    step_length = euclidean(keypoints[27], keypoints[28])
 
-    # Your own face occupies a big portion of the frame
-    if box_w > 0.40 * frame_w or box_h > 0.40 * frame_h:
-        return False  # ignore your face
+    hip_center = (
+        (keypoints[23][0] + keypoints[24][0]) / 2,
+        (keypoints[23][1] + keypoints[24][1]) / 2
+    )
 
-    return True
+    velocity = 0
+    acceleration = 0
+
+    if prev_hip_center is not None:
+        velocity = euclidean(hip_center, prev_hip_center)
+
+    if prev_velocity is not None:
+        acceleration = velocity - prev_velocity
+
+    return shoulder_tilt, hip_tilt, step_length, velocity, acceleration, hip_center
